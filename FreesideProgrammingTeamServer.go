@@ -27,12 +27,7 @@ var (
 	hostPath *string
 	contestPath *string
 
-	emailUser = &EmailUser{"freesideprogramming", "freesidepassword", "smtp.gmail.com", 587}
-
-	auth = smtp.PlainAuth("",
-		emailUser.Username,
-		emailUser.Password,
-		emailUser.EmailServer)
+	auth
 )
 
 
@@ -89,54 +84,6 @@ func (t *jsonTime) UnmarshalJSON(s []byte) (err error) {
 
 func (t jsonTime) String() string	{ return time.Time(t).String() }
 
-/*func (p *Page) save() error {
-	filename := p.Title + ".txt"
-	return ioutil.WriteFile(filename, p.Body, 0600)
-}
-
-func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
-	body, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	return &Page{Title: title, Body: body}, nil
-}*/
-
-/*func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
-		return
-	}
-	renderTemplate(w, "view", p)
-}
-
-func editHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		p = &Page{Title: title}
-	}
-	renderTemplate(w, "edit", p)
-}
-
-func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
-	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
-	err := p.save()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/view/"+title, http.StatusFound)
-}*/
-
-///*func mainHandler(w http.ResponseWriter, r *http.Request, title string) {
-//
-//	renderTemplate(w, "homebefore", thisCompetition)
-//	renderTemplate(w, "homeon", thisCompetition)
-//
-//}*/
 
 /////////////////////////////////////////////////////////////////////////////
 ////////////////                  Pages                   ///////////////////
@@ -222,6 +169,8 @@ func openProblem(w http.ResponseWriter, r *http.Request, prob string) {
 	}
 }
 
+
+///// Judge Page ///////
 
 var judgeTemplate *template.Template
 
@@ -552,67 +501,25 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 
-//func renderTemplate(w http.ResponseWriter, tmpl string, p interface{}) {
-/*func renderTemplate(w http.ResponseWriter, tmpl string, p string) {
-	err := scoreTemplate.Execute(w, p)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}*/
-
-/*var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
-
-func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		m := validPath.FindStringSubmatch(r.URL.Path)
-		if m == nil {
-			http.Redirect(w, r, "/", http.StatusFound)
-			return
-		}
-		fn(w, r, m[2])
-	}
-}*/
-
-//TODO reomve
-///////////////////////////////////////////////////////////////////////
-////                    File host for css/images/etc               ////
-///////////////////////////////////////////////////////////////////////
-/*func errorHandler(w http.ResponseWriter, r *http.Request, status int) {
-    w.WriteHeader(status)
-    if status == http.StatusNotFound {
-	http.Redirect(w, r, "/", http.StatusFound)
-    }
-}
-
-type justFilesFilesystem struct {
-    fs http.FileSystem
-}
-
-func (fs justFilesFilesystem) Open(name string) (http.File, error) {
-    f, err := fs.fs.Open(name)
-    if err != nil {
-        return nil, err
-    }
-    return neuteredReaddirFile{f}, nil
-}
-
-type neuteredReaddirFile struct {
-    http.File
-}
-
-func (f neuteredReaddirFile) Readdir(count int) ([]os.FileInfo, error) {
-    return nil, nil
-}*/
-
-
-/////////////////////////////////////////////////////////////////////////
 func main() {
+		
 	contest.Name = ""
 	hostPath = flag.String("host", "resources/", "Where the site files are located")
 	contestPath = flag.String("contest", "contests/", "Where the contest files are located")
+	username : flag.String("username", "freesideprogramming", "SMTP username")
+	password : flag.String("password", "password", "SMTP password")
+	smtpServer:= flag.String("smtpServer", "smtp.gmail.com", "SMTP server")
+	smtpPort:= flag.String("smtpPort", 587, "SMTP server")
 
 	flag.Parse()
 
+	//todo
+	emailUser = &EmailUser{username, password, smtpServer, smtpPort}
+
+	auth = smtp.PlainAuth("",
+		emailUser.Username,
+		emailUser.Password,
+		emailUser.EmailServer)
 
 	problemTemplate = template.Must(template.ParseFiles(*hostPath + "problem.html"))
 	scoreTemplate = template.Must(template.ParseFiles(*hostPath + "score.html"))

@@ -1,0 +1,34 @@
+<html>
+	<head lang="en">
+		<meta charset="utf-8">
+		<title>Freeside Programming Team Problem</title>  
+		<link rel="stylesheet" type="text/css" href="style.css">
+		<script type="text/javascript" src="judgeScript.js"></script>
+	</head>
+	<body>
+		<div class="row">
+			<form id="form1" enctype="multipart/form-data" method="post" action="judge" style="
+				border: black;
+				border-width: thick;
+				">
+				
+				<h1>Modify contest:</h1>
+				<label>Contest Name:</label>
+				<br>
+				<textarea rows="30" cols="50" name="comment" form="form1" id="contest">{{.}}</textarea>
+				<br>
+				<label>Secret Password:</label><br>
+				<input type="TEXT" name="Secret" id="Secret">
+				<br>
+				Add files?
+				All files are added to the same directory and you can overwrite old ones this way
+				<br>
+				<input type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();" multiple="">
+				<br>
+				<div id="fileNotes"></div>
+				<div id="progressNumber"></div>
+				<input type="button" onclick="uploadContest()" value="Upload">
+			</form>
+		</div>
+	</body>
+</html>

@@ -15,9 +15,10 @@ function fileSelected() {
 
       function uploadFile(usrProbNum) {
         var fd = new( FormData);
+        var userName = document.getElementById('userTextBox').value;
         fd.append("fileToUpload", document.getElementById('fileToUpload').files[0]);
-        fd.append("user", document.getElementById('userTextBox').value);
-        fd.append("email", document.getElementById('emailTextBox').value);
+        fd.append("user", userName);
+        localStorage["name"] = userName;
         var xhr = new XMLHttpRequest();
         xhr.upload.addEventListener("progress", uploadProgress, false);
         xhr.addEventListener("load", uploadComplete, false);

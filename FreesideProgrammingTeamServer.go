@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -22,8 +21,7 @@ import (
 
 var (
 	contest      Contest
-	templatePath *string
-	staticPath   *string
+	filesPath    *string
 	contestPath  *string
 )
 
@@ -57,12 +55,24 @@ type Problem struct {
 	Id                 int
 }
 
+func staticPath() string {
+	return *filesPath + "/static/"
+}
+func templatesPath() string {
+	return *filesPath + "/templates/"
+}
+func scriptsPath() string {
+	return *filesPath + "/scripts/"
+}
+
 /////////////////////////////////////////////////////////////////////////////
 ////////////////                  Pages                   ///////////////////
 /////////////////////////////////////////////////////////////////////////////
 
 //// Score Sheet ////
 var scoreTemplate *template.Template
+var problemTemplate *template.Template
+var judgeTemplate *template.Template
 
 func openScoreSheet(w http.ResponseWriter, r *http.Request) {
 	err := scoreTemplate.Execute(w, contest)
@@ -72,22 +82,25 @@ func openScoreSheet(w http.ResponseWriter, r *http.Request) {
 }
 
 //// Problem Page ////
-var problemTemplate *template.Template
+
+func submissionsPath() string {
+	return *contestPath + "submissions/"
+}
 
 func newSubmissionDirectory() (string, error) {
-	files, err := ioutil.ReadDir(*contestPath + "/submissions")
+	files, err := ioutil.ReadDir(submissionsPath())
 	if err != nil {
-		fmt.Print("trouble reading directory", *contestPath+"/submissions", "\n")
+		fmt.Print("trouble reading directory ", submissionsPath(), "\n")
 		return "", errors.New("Something went wrong reading your file,\nPlease try again")
 	}
 	i := len(files)
 	// TODO: zero-pad so that files sort correctly
-	dirName := *contestPath + "/submissions/" + strconv.Itoa(i)
+	dirName := submissionsPath() + strconv.Itoa(i)
 	_, err = os.Stat(dirName)
 	// be careful to avoid overwriting anything
 	for err == nil {
 		i++
-		dirName = *contestPath + "/submissions/" + strconv.Itoa(i) + "/"
+		dirName = submissionsPath() + strconv.Itoa(i) + "/"
 		_, err = os.Stat(dirName)
 	}
 	return dirName, nil
@@ -128,18 +141,13 @@ func openProblem(w http.ResponseWriter, r *http.Request, problemNum string) {
 			fmt.Fprint(w, "Something went wrong reading your file,\nPlease try again")
 			return
 		}
-		files, err := ioutil.ReadDir(*contestPath + "/submissions")
-		if err != nil {
-			fmt.Print("trouble reading directory", *contestPath+"/submissions", "\n")
-			fmt.Fprint(w, "Something went wrong reading your file,\nPlease try again")
-			return
-		}
 		dirName, err := newSubmissionDirectory()
 		if err != nil {
 			bail(w, err)
 			return
 		}
-		newFileName := dirName + handler.Filename
+		os.Mkdir(dirName, 0777)
+		newFileName := dirName + "/" + handler.Filename
 		err = ioutil.WriteFile(newFileName, data, 0777)
 		if err != nil {
 			fmt.Fprint(w, "Something went wrong writing your file.\nPlease try again")
@@ -156,8 +164,6 @@ func openProblem(w http.ResponseWriter, r *http.Request, problemNum string) {
 }
 
 ///// Judge Page ///////
-
-var judgeTemplate *template.Template
 
 func openJudge(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -309,6 +315,11 @@ func addSubmission(file string, user string, problem Problem, subFileName string
 	}
 
 	newSub.Compiled = true
+	
+	// TODO: add support for multiple test cases, will need to have one output per case
+	inputFile := *contestPath + problem.InputFile
+	expectedOutputFile := *contestPath + problem.OutputFile
+	outputFile := binFile + ".out.txt"
 
 	//Test Program
 	testCommand := ""
@@ -327,26 +338,21 @@ func addSubmission(file string, user string, problem Problem, subFileName string
 		newSub.Note = newSub.Note + "File did not produce file to run\r\n"
 		return newSub
 	}
-	cmd := exec.Command("benchmark",
-		fmt.Sprintf("%s%s/problems/%s", contestPath, contest.Name, problem.InputFile),
-		fmt.Sprintf("%s%sbin/%s.out", contestPath, contest.Name, fileNameBase),
-		testCommand)
-	r, w, _ := os.Pipe()
-	cmd.Stdout = w
+	fmt.Println("test: ")
+	fmt.Println(testCommand)
+	fmt.Println(inputFile)
+	fmt.Println(outputFile)
+	
+	cmd := exec.Command(scriptsPath()+"benchmark",
+		testCommand,
+		*contestPath + problem.InputFile,
+		outputFile)
 	err := cmd.Start()
 	if err != nil {
-		fmt.Print("Error opening pipe:", err, "\n")
+		fmt.Print("Error launching program:", err, "\n")
 		return newSub
 	}
-
-	outC := make(chan string)
-
-	go func() {
-		var buf bytes.Buffer
-		io.Copy(&buf, r)
-		outC <- buf.String()
-	}()
-
+	
 	done := make(chan error)
 	go func() {
 		done <- cmd.Wait()
@@ -356,8 +362,6 @@ func addSubmission(file string, user string, problem Problem, subFileName string
 		if err := cmd.Process.Kill(); err != nil {
 			log.Print("failed to kill: ", err)
 			newSub.TimedOut = true
-			w.Close()
-			_ = <-outC
 			return newSub
 		}
 		<-done // allow goroutine to exit
@@ -368,18 +372,17 @@ func addSubmission(file string, user string, problem Problem, subFileName string
 		}
 	}
 
-	w.Close()
-	out_bytes := <-outC
-	fmt.Printf("!!!%s\n", out_bytes)
-	fmt.Println(len(out_bytes))
-
+	output, err := ioutil.ReadFile(outputFile)
+	fmt.Println("output {")
+	fmt.Print(string(output))
+	fmt.Println("} end")
 	newSub.Ran = true
 
 	//Compare Output
 	//diff -U 0 file1 file2 | grep -v ^@ | wc -l
-	binComparer := exec.Command("countDiff",
-		fmt.Sprintf("%s%sbin/%s.out", contestPath, contest.Name, fileNameBase),
-		fmt.Sprintf("%s%s/problems/%s", contestPath, contest.Name, problem.OutputFile))
+	binComparer := exec.Command("diff",
+		expectedOutputFile,
+		outputFile)
 	binCompare, err := binComparer.Output()
 	fmt.Print("Compare result: ", string(binCompare), "\n")
 	differences, err := strconv.Atoi(strings.Trim(string(binCompare), "\n\r "))
@@ -399,7 +402,6 @@ func addSubmission(file string, user string, problem Problem, subFileName string
 		newSub.Note = newSub.Note + fmt.Sprintf("Compare failed error: %s \r\n", err)
 		return newSub
 	}
-
 	//TODO add big O
 
 	return newSub
@@ -407,15 +409,15 @@ func addSubmission(file string, user string, problem Problem, subFileName string
 
 func serveStatic(w http.ResponseWriter, fileName string) {
 	// open input file
-	fi, err := os.Open(*staticPath + fileName)
+	fi, err := os.Open(staticPath() + fileName)
 	if err != nil {
-		fmt.Print("error reading ", *staticPath+fileName, "\n")
+		fmt.Print("error reading ", staticPath() + fileName, "\n")
 		fmt.Fprint(w, "")
 	}
 	// close fi on exit and check for its returned error
 	defer func() {
 		if err := fi.Close(); err != nil {
-			fmt.Print("error closing ", *staticPath+fileName, "\n")
+			fmt.Print("error closing ", staticPath() + fileName, "\n")
 		}
 	}()
 	// make a read buffer
@@ -425,6 +427,7 @@ func serveStatic(w http.ResponseWriter, fileName string) {
 }
 
 func mainHandler(w http.ResponseWriter, r *http.Request) {
+	loadTemplates() // for development only
 	pathList := strings.Split(r.URL.Path, "/")
 	fileName := pathList[len(pathList)-1]
 	if len(pathList) == 0 {
@@ -465,6 +468,15 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//func loadTemplate(name string) *template.Template {	
+//}
+
+func loadTemplates() {
+	problemTemplate = template.Must(template.ParseFiles(templatesPath() + "problem.html"))
+	scoreTemplate = template.Must(template.ParseFiles(templatesPath() + "score.html"))
+	judgeTemplate = template.Must(template.ParseFiles(templatesPath() + "judge.html"))
+}
+
 func loadContest() {
 	contest.Name = ""
 	// equivalent to Python's `if not os.path.exists(fileName)`
@@ -474,30 +486,42 @@ func loadContest() {
 		rawContest, err := ioutil.ReadFile(*contestPath + "contest.json")
 		if err == nil {
 			err = json.Unmarshal(rawContest, &contest)
-			log.Printf("contest: %#v\n", contest)
 		}
 
 		if err != nil {
 			log.Panicf("Problem loading contest.json, %#v\n", err)
 		}
 	}
+	for i := 0; i < len(contest.Problems); i++ {
+		contest.Problems[i].Id = i
+	}
+	log.Printf("contest: %#v\n", contest)
+}
+
+func checkDirectories() {
+	// make submissions directory if it doesn't exist
+	if _,err := os.Stat(*contestPath + "submissions"); os.IsNotExist(err) {
+		os.Mkdir(*contestPath + "submissions", 0777)
+	}
+	if _,err := os.Stat(templatesPath()); os.IsNotExist(err) {
+		log.Fatal(err)
+	}
 }
 
 func main() {
 	contestPath = flag.String("contest", "contest/", "Where the contest files are located")
-	templatePath = flag.String("templates", "templates/", "Where the template files are located")
-	staticPath = flag.String("static", "static/", "Where the static site files are located")
+	filesPath = flag.String("files", ".", "Where the template/static/script files are located")
 
 	flag.Parse()
 	fmt.Printf("contest path: %s\n", *contestPath)
-	fmt.Printf("template path: %s\n", *templatePath)
-	fmt.Printf("static path: %s\n", *staticPath)
+	fmt.Printf("templates path: %s\n", templatesPath())
+	fmt.Printf("scripts path: %s\n", scriptsPath())
+	fmt.Printf("static path: %s\n", staticPath())
+	// TODO: ensure paths have trailing slashes (or use proper path concatenation methods throughout)
 
-	problemTemplate = template.Must(template.ParseFiles(*templatePath + "problem.html"))
-	scoreTemplate = template.Must(template.ParseFiles(*templatePath + "score.html"))
-	judgeTemplate = template.Must(template.ParseFiles(*templatePath + "judge.html"))
-
+	loadTemplates()
 	loadContest()
+	checkDirectories()
 
 	http.HandleFunc("/", mainHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))

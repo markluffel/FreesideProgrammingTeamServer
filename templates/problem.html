@@ -8,34 +8,44 @@
 		<!--script type="text/javascript" src="angular.js"></script-->
 		<!--script type="text/javascript" src="ng-grid-2.0.7.debug.js"></script-->
 		<script type="text/javascript" src="problemScript.js"></script>
+		<script type="text/javascript">
+		window.onload = function() {
+		    if("name" in localStorage) {
+		        document.getElementById("userTextBox").value = localStorage["name"];
+	        }
+		}
+		</script>
 	</head>
 	<body>
 	    <div id="page">
-    		<div class="Problem">{{.ProblemDescription}}</div>
+    		<div class="Problem"><b>Problem:</b> {{.ProblemDescription}}</div>
+    		<br/>
     		<div class="row">
     			<form id="form1" enctype="multipart/form-data" method="post" action="problem/{{.Id}}">
-    				<label for="fileToUpload">Upload your code!</label><br />
-    				<label for="fileToUpload">Accepted Languages:</label><br />
-    				<UL>
-    					<LI>C (gcc)
-    					<LI>C++ (g++)
-    					<LI>Java
-    					<LI>Python
-    					<LI>Go
-    					<LI>Ruby
-    				</UL>
-    				<br/>
-    				<br/>
-    				<h1>Submit:</h1>
-    				<label>UserName:</label>
+    				<h2>Upload your code:</h2>
+    				<label>Your name:</label>
     				<input type="text" name="user" id="userTextBox" required/> <br/>
-    				<label>Email:</label>
+    				<label>Source code:</label>
     				<input type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();" required/>
+    				<br/>
     				<input type="button" onclick="uploadFile({{.Id}})" value="Upload" />
     				<div id="fileName"></div>
     				<div id="fileSize"></div>
     				<div id="fileType"></div>	
     				<div id="progressNumber"></div>
+    				
+    				<br/>
+    				<p>The server will automatically compile (if necessary) and test your code if it is written in one of the following languages.</p>
+    				<!-- TODO: list the version of each language running on the test system-->
+    				<ul>
+    					<li>C <i>(.c)</i></li>
+    					<li>C++ <i>(.cpp)</i></li>
+    					<li>Java <i>(.java)</i></li>
+    					<li>Python <i>(.py)</i></li>
+    					<li>Go <i>(.go)</i></li>
+    					<li>Ruby <i>(.rb)</i></li>
+    				</ul>
+    				<p></p>
     			</form>
     		</div>
     	</div>

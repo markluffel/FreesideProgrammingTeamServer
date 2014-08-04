@@ -1,0 +1,43 @@
+<html >  
+	<head lang="en">
+		<meta charset="utf-8">
+		<title>Freeside Programming Team Problem</title>  
+		<!--link rel="stylesheet" type="text/css" href="ng-grid.css" /-->
+		<link rel="stylesheet" type="text/css" href="style.css" />
+		<!--script type="text/javascript" src="jquery-1.8.3.js"></script-->
+		<!--script type="text/javascript" src="angular.js"></script-->
+		<!--script type="text/javascript" src="ng-grid-2.0.7.debug.js"></script-->
+		<script type="text/javascript" src="problemScript.js"></script>
+	</head>
+	<body>
+	    <div id="page">
+    		<div class="Problem">{{.ProblemDescription}}</div>
+    		<div class="row">
+    			<form id="form1" enctype="multipart/form-data" method="post" action="problem/{{.Id}}">
+    				<label for="fileToUpload">Upload your code!</label><br />
+    				<label for="fileToUpload">Accepted Languages:</label><br />
+    				<UL>
+    					<LI>C (gcc)
+    					<LI>C++ (g++)
+    					<LI>Java
+    					<LI>Python
+    					<LI>Go
+    					<LI>Ruby
+    				</UL>
+    				<br/>
+    				<br/>
+    				<h1>Submit:</h1>
+    				<label>UserName:</label>
+    				<input type="text" name="user" id="userTextBox" required/> <br/>
+    				<label>Email:</label>
+    				<input type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();" required/>
+    				<input type="button" onclick="uploadFile({{.Id}})" value="Upload" />
+    				<div id="fileName"></div>
+    				<div id="fileSize"></div>
+    				<div id="fileType"></div>	
+    				<div id="progressNumber"></div>
+    			</form>
+    		</div>
+    	</div>
+	</body>
+</html>

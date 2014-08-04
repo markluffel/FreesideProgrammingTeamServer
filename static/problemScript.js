@@ -16,8 +16,8 @@ function fileSelected() {
       function uploadFile(usrProbNum) {
         var fd = new( FormData);
         fd.append("fileToUpload", document.getElementById('fileToUpload').files[0]);
-	fd.append("user", document.getElementById('userTextBox').value);
-	fd.append("email", document.getElementById('emailTextBox').value);
+        fd.append("user", document.getElementById('userTextBox').value);
+        fd.append("email", document.getElementById('emailTextBox').value);
         var xhr = new XMLHttpRequest();
         xhr.upload.addEventListener("progress", uploadProgress, false);
         xhr.addEventListener("load", uploadComplete, false);
@@ -39,7 +39,7 @@ function fileSelected() {
 
       function uploadComplete(evt) {
         /* This event is raised when the server send back a response */
-	window.location = evt.target.responseText;
+	    window.location = evt.target.responseText;
       }
 
       function uploadFailed(evt) {

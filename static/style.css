@@ -1,0 +1,8 @@
+body {
+    background-color: gray;
+}
+#page {
+    width: 60em;
+    margin: 0 auto;
+    background-color: white;
+}

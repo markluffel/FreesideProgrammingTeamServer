@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"os/exec"
@@ -156,7 +157,7 @@ func openProblem(w http.ResponseWriter, r *http.Request, problemNum string) {
 		fmt.Print("host = ", r.Host, "\n")
 		//fmt.Fprint(w, r.Host + "/")
 
-		addSubmission(newFileName, r.FormValue("user"), problem, handler.Filename)
+		addSubmission(newFileName, r.FormValue("user"), r.FormValue("email"), problem, handler.Filename)
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -266,6 +267,7 @@ func openJudge(w http.ResponseWriter, r *http.Request) {
 
 type submission struct {
 	User               string
+	Email              string
 	File               string
 	SubmissionFileName string
 	SubTime            time.Time
@@ -277,11 +279,12 @@ type submission struct {
 	RunTime            time.Time
 }
 
-func addSubmission(file string, user string, problem Problem, subFileName string) *submission {
-	newSub := &submission{File: file, User: user, SubTime: time.Now(),
+func addSubmission(file string, user string, email string, problem Problem, subFileName string) *submission {
+	newSub := &submission{File: file, User: user, Email: email, SubTime: time.Now(),
 		SubmissionFileName: subFileName}
 	fileNameBase := strings.Split(filepath.Base(file), ".")[0]
 	binFile := *contestPath + contest.Name + "/bin/" + fileNameBase
+	sandboxFile := ""
 	switch filepath.Ext(file) {
 	case ".c":
 		//TODO
@@ -318,17 +321,21 @@ func addSubmission(file string, user string, problem Problem, subFileName string
 	
 	// TODO: add support for multiple test cases, will need to have one output per case
 	inputFile := *contestPath + problem.InputFile
-	expectedOutputFile := *contestPath + problem.OutputFile
 	outputFile := binFile + ".out.txt"
+	errorFile := binFile + ".err.txt"
+	
+	expectedOutputFile := *contestPath + problem.OutputFile
 
-	//Test Program
+	// Test Program
 	testCommand := ""
 	if _, err := os.Stat(binFile); err == nil {
 		switch filepath.Ext(file) {
 		case ".py":
 			testCommand = "python " + binFile
+			sandboxFile = "python.sb"
 		case ".rb":
 			testCommand = "ruby " + binFile
+			sandboxFile = "python.sb"
 		case ".java":
 			testCommand = "java " + binFile
 		case ".c", ".cpp", ".go":
@@ -338,15 +345,19 @@ func addSubmission(file string, user string, problem Problem, subFileName string
 		newSub.Note = newSub.Note + "File did not produce file to run\r\n"
 		return newSub
 	}
+	/*
 	fmt.Println("test: ")
 	fmt.Println(testCommand)
 	fmt.Println(inputFile)
 	fmt.Println(outputFile)
+	*/
 	
-	cmd := exec.Command(scriptsPath()+"benchmark",
+	cmd := exec.Command(scriptsPath()+"safe-launch",
 		testCommand,
-		*contestPath + problem.InputFile,
-		outputFile)
+		sandboxFile,
+		inputFile,
+		outputFile,
+		errorFile)
 	err := cmd.Start()
 	if err != nil {
 		fmt.Print("Error launching program:", err, "\n")
@@ -408,6 +419,7 @@ func addSubmission(file string, user string, problem Problem, subFileName string
 }
 
 func serveStatic(w http.ResponseWriter, fileName string) {
+	w.Header().Add("Content-Type", mime.TypeByExtension(filepath.Ext(fileName)));
 	// open input file
 	fi, err := os.Open(staticPath() + fileName)
 	if err != nil {

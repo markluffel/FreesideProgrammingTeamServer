@@ -10,3 +10,14 @@ body {
 h1,h2,h3,h4 {
     font-family: sans-serif;
 }
+#uploadForm {
+    font-size: large;
+}
+#uploadForm label {
+    min-width: 7em;
+    display: inline-block;
+    text-align: right;
+}
+#uploadForm button {
+    margin: 2em 7em;
+}

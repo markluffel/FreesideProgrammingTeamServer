@@ -1,0 +1,27 @@
+(version 1)
+(deny default)
+
+(define (relative relative-path)
+   (string-append (param "HERE") relative-path))
+
+;; allow starting shell script
+(allow process-exec
+    (literal "/bin/bash")
+    (subpath "/usr/local/Cellar/python")
+)
+
+(allow process-fork) ;; to start python
+
+(allow file-read*
+    (subpath "/System/Library/Frameworks") ;; to run python
+    (subpath "/usr") ;; to run python and load libraries
+    ;; to read the script and input
+    (subpath (relative "/contest"))
+    (subpath (relative "/scripts"))
+    ;; so that "import random" is allowed
+    (literal "/dev/random")
+    (literal "/dev/urandom")
+)
+
+;; prevent: "shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted"
+(allow file-read-metadata (literal (param "HERE")))

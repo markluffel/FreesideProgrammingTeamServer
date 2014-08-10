@@ -14,11 +14,14 @@ function fileSelected() {
       }
 
       function uploadFile(usrProbNum) {
-        var fd = new( FormData);
+        var fd = new FormData();
         var userName = document.getElementById('userTextBox').value;
+        var email = document.getElementById('emailTextBox').value;
         fd.append("fileToUpload", document.getElementById('fileToUpload').files[0]);
         fd.append("user", userName);
+        fd.append("email", email);
         localStorage["name"] = userName;
+        localStorage["email"] = email;
         var xhr = new XMLHttpRequest();
         xhr.upload.addEventListener("progress", uploadProgress, false);
         xhr.addEventListener("load", uploadComplete, false);
